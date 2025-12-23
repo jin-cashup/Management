@@ -2107,121 +2107,60 @@ function updateLanguage() {
             try {
                 const response = await fetch(`${API_BASE}/api/admin/recipes`);
                 const data = await response.json();
-                const namesDiv = document.getElementById('productNamesList');
+                const listDiv = document.getElementById('productList');
 
                 if (data.success && data.data.length > 0) {
-                    namesDiv.innerHTML = '';
+                    let html = '';
 
                     data.data.forEach(product => {
-                        const item = document.createElement('div');
-                        item.className = 'powder-item';
-                        item.dataset.productName = product.product_name;
+                        const totalRatio = product.recipes.reduce((sum, r) => sum + parseFloat(r.ratio || 0), 0);
+                        html += `
+                            <div class="card" style="margin-bottom: 15px; border-left: 4px solid #667eea;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <div>
+                                        <h3 style="margin: 0;">${product.product_name}</h3>
+                                        ${product.product_code ? `<small style="color: #666;">${t('productCode')}: ${product.product_code}</small>` : ''}
+                                    </div>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button class="btn primary" onclick="editProduct('${product.product_name}')" style="padding: 8px 12px;">${t('edit')}</button>
+                                        <button class="btn danger" onclick="deleteProduct('${product.product_name}')" style="padding: 8px 12px;">${t('delete')}</button>
+                                    </div>
+                                </div>
+                                <table style="width: 100%; font-size: 0.9em;">
+                                    <tr>
+                                        <th>${t('powderName')}</th>
+                                        <th>${t('category')}</th>
+                                        <th>${t('ratio')} (%)</th>
+                                        <th>${t('tolerance')} (%)</th>
+                                    </tr>`;
 
-                        item.innerHTML = `
-                            <div style="display:flex;align-items:center;gap:10px;width:100%;">
-                                <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${product.product_name}</strong><div style='font-size:0.85em;color:#666;'>${product.product_code || ''}</div></div>
-                                <div style="flex-shrink:0;margin-left:8px;"><input type="checkbox" class="spec-toggle-checkbox" id="prodToggle_${product.product_name}" aria-label="show-prod-${product.product_name}"></div>
-                            </div>
-                        `;
+                        product.recipes.forEach(recipe => {
+                            const categoryBadge = recipe.powder_category === 'incoming'
+                                ? `<span class="badge" style="background: #2196F3;">${t('incoming')}</span>`
+                                : `<span class="badge" style="background: #FF9800;">${t('mixing')}</span>`;
 
-                        item.addEventListener('click', (ev) => {
-                            if (ev.target && ev.target.classList && ev.target.classList.contains('spec-toggle-checkbox')) return;
-                            document.querySelectorAll('#productNamesList .powder-item').forEach(el => {
-                                el.classList.remove('active');
-                                const cb = el.querySelector('.spec-toggle-checkbox'); if (cb) cb.checked = false;
-                            });
-                            item.classList.add('active');
-                            const cb = item.querySelector('.spec-toggle-checkbox'); if (cb) cb.checked = true;
-                            showProductDetail(product.product_name);
+                            html += `<tr>
+                                <td>${recipe.powder_name}</td>
+                                <td>${categoryBadge}</td>
+                                <td>${formatTwo(recipe.ratio)}%</td>
+                                <td>±${formatTwo(recipe.tolerance_percent)}%</td>
+                            </tr>`;
                         });
 
-                        namesDiv.appendChild(item);
-
-                        const checkbox = item.querySelector('.spec-toggle-checkbox');
-                        if (checkbox) {
-                            checkbox.addEventListener('change', (e) => {
-                                if (e.target.checked) {
-                                    document.querySelectorAll('#productNamesList .powder-item').forEach(el => {
-                                        el.classList.remove('active');
-                                        const cbx = el.querySelector('.spec-toggle-checkbox'); if (cbx && cbx !== e.target) cbx.checked = false;
-                                    });
-                                    item.classList.add('active');
-                                    showProductDetail(product.product_name);
-                                } else {
-                                    item.classList.remove('active');
-                                    const detailDiv = document.getElementById('recipeSpecDetail');
-                                    if (detailDiv) detailDiv.innerHTML = `<div class="empty-message">왼쪽에서 제품명을 선택하세요</div>`;
-                                }
-                            });
-                        }
+                        html += `<tr style="font-weight:600;background:#f5f5f5;"><td>${t('totalRatio')}</td><td colspan="3" style="text-align:left;padding:8px;border:1px solid #e8e8e8;">${totalRatio.toFixed(2)}%</td></tr>`;
+                        html += `</table></div>`;
                     });
 
-                    // 자동 선택
-                    const first = namesDiv.querySelector('.powder-item');
-                    if (first) {
-                        first.classList.add('active');
-                        const cb = first.querySelector('.spec-toggle-checkbox'); if (cb) cb.checked = true;
-                        showProductDetail(first.dataset.productName);
-                    }
+                    listDiv.innerHTML = html;
                 } else {
-                    namesDiv.innerHTML = `<div class="empty-message">${t('noProducts')}</div>`;
-                    const detailDiv = document.getElementById('recipeSpecDetail');
-                    if (detailDiv) detailDiv.innerHTML = `<div class="empty-message">${t('noProducts')}</div>`;
+                    listDiv.innerHTML = `<div class="empty-message">${t('noProducts')}</div>`;
                 }
             } catch (error) {
                 console.error('Recipe 목록 로딩 실패:', error);
             }
         }
 
-        async function showProductDetail(productName) {
-            try {
-                const response = await fetch(`${API_BASE}/api/admin/recipes?product_name=${encodeURIComponent(productName)}`);
-                const data = await response.json();
 
-                if (!data.success || !data.data || data.data.length === 0) {
-                    const dd = document.getElementById('recipeSpecDetail');
-                    if (dd) dd.innerHTML = `<div class="empty-message">제품 정보를 찾을 수 없습니다.</div>`;
-                    return;
-                }
-
-                const product = data.data[0];
-                const headerDiv = document.getElementById('recipeSpecHeader');
-                const detailDiv = document.getElementById('recipeSpecDetail');
-
-                headerDiv.innerHTML = `
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                        <div>
-                            <h3 style="margin:0;color:#333;">${product.product_name}</h3>
-                            ${product.product_code ? `<div style="color:#666;font-size:0.9em;">${t('productCode')}: ${product.product_code}</div>` : ''}
-                        </div>
-                        <div>
-                            <button class="btn secondary" id="prodEditBtn" onclick="toggleProductInlineEdit('${product.product_name}')" style="margin-right:6px;padding:6px 12px;">${t('edit')}</button>
-                            <button class="btn danger" onclick="deleteProduct('${product.product_name}')" style="padding:6px 12px;">${t('delete')}</button>
-                        </div>
-                    </div>
-                `;
-
-                let html = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f8f9fa;"><th style="padding:10px;border:1px solid #e8e8e8;text-align:left;">${t('powderName')}</th><th style="padding:10px;border:1px solid #e8e8e8;text-align:center;">${t('category')}</th><th style="padding:10px;border:1px solid #e8e8e8;text-align:center;">${t('ratio')} (%)</th><th style="padding:10px;border:1px solid #e8e8e8;text-align:center;">${t('tolerance')} (%)</th></tr></thead><tbody>`;
-
-                let totalRatio = 0;
-                product.recipes.forEach(recipe => {
-                    totalRatio += parseFloat(recipe.ratio || 0);
-                    const categoryBadge = recipe.powder_category === 'incoming'
-                        ? `<span class="badge" style="background: #2196F3;">${t('incoming')}</span>`
-                        : `<span class="badge" style="background: #FF9800;">${t('mixing')}</span>`;
-
-                    html += `<tr><td style="padding:8px;border:1px solid #e8e8e8;">${recipe.powder_name}</td><td style="padding:8px;border:1px solid #e8e8e8;text-align:center;">${categoryBadge}</td><td style="padding:8px;border:1px solid #e8e8e8;text-align:center;">${formatTwo(recipe.ratio)}%</td><td style="padding:8px;border:1px solid #e8e8e8;text-align:center;">±${formatTwo(recipe.tolerance_percent)}%</td></tr>`;
-                });
-
-                html += `<tr style="font-weight:600;background:#f5f5f5;"><td>${t('totalRatio')}</td><td colspan="3" style="text-align:left;padding:8px;border:1px solid #e8e8e8;">${totalRatio.toFixed(2)}%</td></tr>`;
-                html += `</tbody></table></div>`;
-
-                detailDiv.innerHTML = html;
-
-            } catch (error) {
-                console.error('제품 상세 로딩 실패:', error);
-            }
-        }
 
         async function showAddProductForm() {
             document.getElementById('productFormTitle').textContent = t('addNewProduct');
@@ -2239,18 +2178,7 @@ function updateLanguage() {
 
         function hideProductForm() {
             document.getElementById('productFormContainer').style.display = 'none';
-            // 우측 상세 영역 보이기(선택된 제품이 있으면 다시 로드)
-            const headerDiv = document.getElementById('recipeSpecHeader');
-            const detailDiv = document.getElementById('recipeSpecDetail');
-            if (headerDiv) headerDiv.style.display = '';
-            if (detailDiv) detailDiv.style.display = '';
-            // 재선택된 항목이 있으면 상세 다시 표시
-            const active = document.querySelector('#productNamesList .powder-item.active');
-            if (active && active.dataset && active.dataset.productName) {
-                showProductDetail(active.dataset.productName);
-            } else if (detailDiv) {
-                detailDiv.innerHTML = `<div class="empty-message">왼쪽에서 제품명을 선택하세요</div>`;
-            }
+            loadProductRecipes(); // 목록 새로고침
         }
 
         async function editProduct(productName) {
@@ -2297,11 +2225,7 @@ function updateLanguage() {
                     }
                 }
 
-                // 폼 표시: 우측 상세 영역을 폼으로 대체
-                const headerDiv = document.getElementById('recipeSpecHeader');
-                const detailDiv = document.getElementById('recipeSpecDetail');
-                if (headerDiv) headerDiv.style.display = 'none';
-                if (detailDiv) detailDiv.style.display = 'none';
+                // 폼 표시
                 document.getElementById('productFormContainer').style.display = 'block';
 
             } catch (error) {
@@ -4506,129 +4430,7 @@ function updateLanguage() {
             return `<div style="display:flex;flex-direction:column;align-items:flex-start;">${boxesHtml}${remainingText}${note}</div>`;
         }
 
-        // Recipe 인라인 편집 모드 전역 변수
-        let isProductInlineEditMode = false;
 
-        function toggleProductInlineEdit(productName) {
-            const editBtn = document.getElementById('prodEditBtn');
-            if (!isProductInlineEditMode) {
-                enableProductInlineEdit();
-                if (editBtn) {
-                    editBtn.textContent = '저장';
-                    editBtn.classList.remove('secondary');
-                    editBtn.classList.add('primary');
-                }
-                isProductInlineEditMode = true;
-            } else {
-                saveProductInlineEdit(productName);
-            }
-        }
-
-        function enableProductInlineEdit() {
-            const table = document.querySelector('#recipeSpecDetail table');
-            if (!table) return;
-
-            const rows = table.querySelectorAll('tbody tr');
-            rows.forEach(row => {
-                // ratio 컬럼(3번째)과 tolerance 컬럼(4번째)을 입력으로 교체
-                const ratioCell = row.cells[2];
-                const tolCell = row.cells[3];
-
-                if (ratioCell) {
-                    const raw = ratioCell.textContent || '';
-                    const v = raw.replace(/[%\s]/g, '') || '';
-                    ratioCell.innerHTML = `<input type="number" step="0.01" value="${v}" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px; text-align:center;">`;
-                }
-
-                if (tolCell) {
-                    const raw2 = tolCell.textContent || '';
-                    const v2 = raw2.replace(/[±%\s]/g, '') || '';
-                    tolCell.innerHTML = `<input type="number" step="0.01" value="${v2}" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px; text-align:center;">`;
-                }
-            });
-        }
-
-        async function saveProductInlineEdit(productName) {
-            const table = document.querySelector('#recipeSpecDetail table');
-            const editBtn = document.getElementById('prodEditBtn');
-            if (!table) return;
-
-            // 제품명 안전 추출(파라미터 우선, 없으면 헤더에서 읽음)
-            let prodName = productName || document.querySelector('#recipeSpecHeader h3')?.textContent?.trim();
-            if (!prodName) return alert('제품명을 찾을 수 없습니다.');
-
-            const rows = table.querySelectorAll('tbody tr');
-            const recipes = [];
-
-            rows.forEach(row => {
-                const powderName = (row.cells[0] && row.cells[0].textContent) ? row.cells[0].textContent.trim() : '';
-                const categoryText = (row.cells[1] && row.cells[1].textContent) ? row.cells[1].textContent.trim() : '';
-                const ratioInput = row.cells[2].querySelector('input');
-                const tolInput = row.cells[3].querySelector('input');
-
-                const powder_category = /수입|incoming/i.test(categoryText) ? 'incoming' : 'mixing';
-                const ratio = ratioInput ? parseFloat(ratioInput.value || 0) : 0;
-                const tolerance = tolInput ? parseFloat(tolInput.value || 0) : 0;
-
-                if (powderName && !isNaN(ratio)) {
-                    recipes.push({
-                        product_name: prodName,
-                        product_code: '',
-                        powder_name: powderName,
-                        powder_category: powder_category,
-                        ratio: parseFloat(ratio),
-                        target_weight: null,
-                        tolerance_percent: parseFloat(isNaN(tolerance) ? 0 : tolerance),
-                        is_main: false
-                    });
-                }
-            });
-
-            if (recipes.length === 0) return alert('저장할 항목이 없습니다.');
-
-            // 비율 합계 확인
-            const totalRatio = recipes.reduce((s, r) => s + (r.ratio || 0), 0);
-            if (Math.abs(totalRatio - 100) > 0.5) {
-                if (!confirm(`비율 합계가 100%에 가깝지 않습니다. 현재 합계: ${totalRatio.toFixed(2)}%. 계속 저장하시겠습니까?`)) {
-                    return;
-                }
-            }
-
-            try {
-                // 기존 제품 레시피 삭제
-                const delResp = await fetch(`${API_BASE}/api/admin/recipe/product/${encodeURIComponent(prodName)}`, { method: 'DELETE' });
-                const delData = await delResp.json();
-                if (!delData.success) {
-                    throw new Error('기존 Recipe 삭제 실패: ' + (delData.message || ''));
-                }
-
-                // 새로 추가
-                for (const rec of recipes) {
-                    const resp = await fetch(`${API_BASE}/api/admin/recipe`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(rec)
-                    });
-                    const rj = await resp.json();
-                    if (!rj.success) throw new Error(rj.message || '저장 실패');
-                }
-
-                alert('저장되었습니다.');
-                isProductInlineEditMode = false;
-                if (editBtn) {
-                    editBtn.textContent = '수정';
-                    editBtn.classList.remove('primary');
-                    editBtn.classList.add('secondary');
-                }
-
-                // 상세 다시 로드
-                showProductDetail(prodName);
-                loadProductRecipes();
-            } catch (error) {
-                console.error('제품 인라인 저장 실패:', error);
-                alert('저장 중 오류가 발생했습니다: ' + error.message);
-            }
-        }
 
         // 초기 로드
         window.onload = () => {
