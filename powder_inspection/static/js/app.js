@@ -2107,65 +2107,89 @@ function updateLanguage() {
             try {
                 const response = await fetch(`${API_BASE}/api/admin/recipes`);
                 const data = await response.json();
-
-                const listDiv = document.getElementById('productList');
+                const namesDiv = document.getElementById('productNamesList');
 
                 if (data.success && data.data.length > 0) {
-                    let html = '';
+                    namesDiv.innerHTML = '';
 
                     data.data.forEach(product => {
-                        const totalRatio = product.recipes.reduce((sum, r) => sum + parseFloat(r.ratio || 0), 0);
+                        const item = document.createElement('div');
+                        item.className = 'powder-item';
+                        item.dataset.productName = product.product_name;
+                        item.innerHTML = `<div style="display:flex;align-items:center;gap:10px;width:100%;"><div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${product.product_name}</strong><div style='font-size:0.85em;color:#666;'>${product.product_code || ''}</div></div></div>`;
 
-                        html += `
-                            <div class="card" style="margin-bottom: 15px; border-left: 4px solid #667eea;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                    <div>
-                                        <h3 style="margin: 0;">${product.product_name}</h3>
-                                        ${product.product_code ? `<small style="color: #666;">${t('productCode')}: ${product.product_code}</small>` : ''}
-                                    </div>
-                                    <div style="display: flex; gap: 10px;">
-                                        <button class="btn primary" onclick="editProduct('${product.product_name}')" style="padding: 8px 12px;">${t('edit')}</button>
-                                        <button class="btn danger" onclick="deleteProduct('${product.product_name}')" style="padding: 8px 12px;">${t('delete')}</button>
-                                    </div>
-                                </div>
-
-                                <table style="width: 100%; font-size: 0.9em;">
-                                    <tr>
-                                        <th>${t('powderName')}</th>
-                                        <th>${t('category')}</th>
-                                        <th>${t('ratio')} (%)</th>
-                                        <th>${t('tolerance')} (%)</th>
-                                    </tr>`;
-
-                        product.recipes.forEach(recipe => {
-                            const categoryBadge = recipe.powder_category === 'incoming'
-                                ? `<span class="badge" style="background: #2196F3;">${t('incoming')}</span>`
-                                : `<span class="badge" style="background: #FF9800;">${t('mixing')}</span>`;
-
-                            html += `
-                                <tr>
-                                    <td>${recipe.powder_name}</td>
-                                    <td>${categoryBadge}</td>
-                                    <td>${formatTwo(recipe.ratio)}%</td>
-                                    <td>±${formatTwo(recipe.tolerance_percent)}%</td>
-                                </tr>`;
+                        item.addEventListener('click', () => {
+                            document.querySelectorAll('#productNamesList .powder-item').forEach(el => el.classList.remove('active'));
+                            item.classList.add('active');
+                            showProductDetail(product.product_name);
                         });
 
-                        html += `
-                                    <tr style="font-weight: bold; background: #f5f5f5;">
-                                        <td>${t('totalRatio')}</td>
-                                        <td colspan="3">${totalRatio.toFixed(2)}%</td>
-                                    </tr>
-                                </table>
-                            </div>`;
+                        namesDiv.appendChild(item);
                     });
 
-                    listDiv.innerHTML = html;
+                    // 자동 선택
+                    const first = namesDiv.querySelector('.powder-item');
+                    if (first) {
+                        first.classList.add('active');
+                        showProductDetail(first.dataset.productname || first.dataset.productName);
+                    }
                 } else {
-                    listDiv.innerHTML = `<div class="empty-message">${t('noProducts')}</div>`;
+                    namesDiv.innerHTML = `<div class="empty-message">${t('noProducts')}</div>`;
+                    const detailDiv = document.getElementById('recipeSpecDetail');
+                    if (detailDiv) detailDiv.innerHTML = `<div class="empty-message">${t('noProducts')}</div>`;
                 }
             } catch (error) {
                 console.error('Recipe 목록 로딩 실패:', error);
+            }
+        }
+
+        async function showProductDetail(productName) {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/recipes?product_name=${encodeURIComponent(productName)}`);
+                const data = await response.json();
+
+                if (!data.success || !data.data || data.data.length === 0) {
+                    const dd = document.getElementById('recipeSpecDetail');
+                    if (dd) dd.innerHTML = `<div class="empty-message">제품 정보를 찾을 수 없습니다.</div>`;
+                    return;
+                }
+
+                const product = data.data[0];
+                const headerDiv = document.getElementById('recipeSpecHeader');
+                const detailDiv = document.getElementById('recipeSpecDetail');
+
+                headerDiv.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <div>
+                            <h3 style="margin:0;color:#333;">${product.product_name}</h3>
+                            ${product.product_code ? `<div style="color:#666;font-size:0.9em;">${t('productCode')}: ${product.product_code}</div>` : ''}
+                        </div>
+                        <div>
+                            <button class="btn secondary" onclick="editProduct('${product.product_name}')" style="margin-right:6px;padding:6px 12px;">${t('edit')}</button>
+                            <button class="btn danger" onclick="deleteProduct('${product.product_name}')" style="padding:6px 12px;">${t('delete')}</button>
+                        </div>
+                    </div>
+                `;
+
+                let html = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f8f9fa;"><th style="padding:10px;border:1px solid #e8e8e8;text-align:left;">${t('powderName')}</th><th style="padding:10px;border:1px solid #e8e8e8;text-align:center;">${t('category')}</th><th style="padding:10px;border:1px solid #e8e8e8;text-align:center;">${t('ratio')} (%)</th><th style="padding:10px;border:1px solid #e8e8e8;text-align:center;">${t('tolerance')} (%)</th></tr></thead><tbody>`;
+
+                let totalRatio = 0;
+                product.recipes.forEach(recipe => {
+                    totalRatio += parseFloat(recipe.ratio || 0);
+                    const categoryBadge = recipe.powder_category === 'incoming'
+                        ? `<span class="badge" style="background: #2196F3;">${t('incoming')}</span>`
+                        : `<span class="badge" style="background: #FF9800;">${t('mixing')}</span>`;
+
+                    html += `<tr><td style="padding:8px;border:1px solid #e8e8e8;">${recipe.powder_name}</td><td style="padding:8px;border:1px solid #e8e8e8;text-align:center;">${categoryBadge}</td><td style="padding:8px;border:1px solid #e8e8e8;text-align:center;">${formatTwo(recipe.ratio)}%</td><td style="padding:8px;border:1px solid #e8e8e8;text-align:center;">±${formatTwo(recipe.tolerance_percent)}%</td></tr>`;
+                });
+
+                html += `<tr style="font-weight:600;background:#f5f5f5;"><td>${t('totalRatio')}</td><td colspan="3" style="text-align:left;padding:8px;border:1px solid #e8e8e8;">${totalRatio.toFixed(2)}%</td></tr>`;
+                html += `</tbody></table></div>`;
+
+                detailDiv.innerHTML = html;
+
+            } catch (error) {
+                console.error('제품 상세 로딩 실패:', error);
             }
         }
 

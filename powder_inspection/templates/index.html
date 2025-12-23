@@ -840,10 +840,15 @@
             <!-- Recipe(배합 규격서) 관리 -->
             <div class="card">
                 <div class="card-title">📋 <span data-i18n="recipeManagement">배합 규격서 (Recipe) 관리</span></div>
-                <button class="btn secondary" onclick="showAddProductForm()" style="margin-bottom: 15px;" data-i18n="addNewProduct">+ 새 제품 추가</button>
+                <div class="admin-powder-layout" style="display:flex; gap:16px; align-items:flex-start;">
+                    <div class="powder-list-column" style="width: 300px; min-width:300px; flex-shrink:0;">
+                        <button class="btn secondary" onclick="showAddProductForm()" style="width:100%; margin-bottom:12px; padding:8px 12px; font-size:0.95em;" data-i18n="addNewProduct">+ 새 제품 추가</button>
+                        <div id="productNamesList" class="vertical-list"></div>
+                    </div>
 
-                <!-- 제품/Recipe 추가/수정 폼 -->
-                <div id="productFormContainer" style="display: none; margin-bottom: 20px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                    <div class="powder-spec-column" style="flex:1; min-width:320px;">
+                        <!-- 제품/Recipe 추가/수정 폼 -->
+                        <div id="productFormContainer" style="display: none; margin-bottom: 20px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
                     <h3 id="productFormTitle">새 제품 추가</h3>
                     <form id="productForm">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
@@ -869,8 +874,14 @@
                     </form>
                 </div>
 
-                <!-- 제품 목록 -->
-                <div id="productList"></div>
+                        </div>
+
+                        <div id="recipeSpecHeader"></div>
+                        <div id="recipeSpecDetail" style="margin-top:8px;">
+                            <div class="empty-message">왼쪽에서 제품명을 선택하세요</div>
+                        </div>
+                    </div>
+                </div>
             </div>
             </div>
             <!-- 탭 3 끝 -->
