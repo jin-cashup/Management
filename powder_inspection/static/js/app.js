@@ -1127,17 +1127,54 @@ function updateLanguage() {
                         const item = document.createElement('div');
                         item.className = 'powder-item';
                         item.dataset.specId = spec.id;
-                        item.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;">` +
-                            `<div><strong>${spec.powder_name}</strong></div>` +
-                            `</div>`;
 
-                        item.addEventListener('click', () => {
-                            document.querySelectorAll('.vertical-list .powder-item').forEach(el => el.classList.remove('active'));
+                        item.innerHTML = `
+                            <div style="display:flex;align-items:center;gap:10px;width:100%;">
+                                <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${spec.powder_name}</strong></div>
+                                <div style="flex-shrink:0;margin-left:8px;">
+                                    <input type="checkbox" class="spec-toggle-checkbox" id="specToggle_${spec.id}" aria-label="show-spec-${spec.id}">
+                                </div>
+                            </div>
+                        `;
+
+                        // 클릭 시 선택 및 상세 표시 (체크박스도 체크)
+                        item.addEventListener('click', (ev) => {
+                            // 클릭이 체크박스 자체일 경우 중복 처리 방지
+                            if (ev.target && ev.target.classList && ev.target.classList.contains('spec-toggle-checkbox')) return;
+                            document.querySelectorAll('.vertical-list .powder-item').forEach(el => {
+                                el.classList.remove('active');
+                                const cb = el.querySelector('.spec-toggle-checkbox');
+                                if (cb) cb.checked = false;
+                            });
                             item.classList.add('active');
+                            const cb = item.querySelector('.spec-toggle-checkbox');
+                            if (cb) cb.checked = true;
                             showPowderSpecDetail(spec.id);
                         });
 
+                        // 체크박스 변경 이벤트: 체크하면 상세 보이기, 해제하면 우측 비우기
+                        // 체크박스는 여러개를 허용하지 않음(한번에 하나만 보기)
+                        // checkbox 클릭 시 이벤트 버블로 인해 위 클릭핸들러가 호출될 수 있으므로 change로 처리
                         namesDiv.appendChild(item);
+
+                        const checkbox = item.querySelector('.spec-toggle-checkbox');
+                        if (checkbox) {
+                            checkbox.addEventListener('change', (e) => {
+                                if (e.target.checked) {
+                                    document.querySelectorAll('.vertical-list .powder-item').forEach(el => {
+                                        el.classList.remove('active');
+                                        const cbx = el.querySelector('.spec-toggle-checkbox');
+                                        if (cbx && cbx !== e.target) cbx.checked = false;
+                                    });
+                                    item.classList.add('active');
+                                    showPowderSpecDetail(spec.id);
+                                } else {
+                                    item.classList.remove('active');
+                                    const detailDiv = document.getElementById('powderSpecDetail');
+                                    if (detailDiv) detailDiv.innerHTML = `<div class="empty-message">왼쪽에서 분말명을 선택하세요</div>`;
+                                }
+                            });
+                        }
                     });
 
                     // 자동 선택
@@ -1145,6 +1182,8 @@ function updateLanguage() {
                     if (first) {
                         first.classList.add('active');
                         const firstId = first.dataset.specId;
+                        const firstCb = first.querySelector('.spec-toggle-checkbox');
+                        if (firstCb) firstCb.checked = true;
                         showPowderSpecDetail(parseInt(firstId));
                     }
                 } else {

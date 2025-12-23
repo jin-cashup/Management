@@ -609,17 +609,17 @@ table tbody tr:hover {
 }
 
 .vertical-list .powder-item {
-    padding: 10px 12px;
-    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-radius: 6px;
     cursor: pointer;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
     border: 1px solid #e8e8e8;
-    font-size: 0.95em;
+    font-size: 0.98em;
     background: #fafafa;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    transition: all 0.18s ease;
 }
 
 .vertical-list .powder-item:hover {
@@ -632,6 +632,11 @@ table tbody tr:hover {
     color: white;
     border-color: #1565c0;
     font-weight: 600;
+}
+
+.vertical-list .powder-item .spec-toggle-checkbox {
+    width: 18px;
+    height: 18px;
 }
 
 .spec-header {
