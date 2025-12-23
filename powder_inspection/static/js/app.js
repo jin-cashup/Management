@@ -2116,22 +2116,52 @@ function updateLanguage() {
                         const item = document.createElement('div');
                         item.className = 'powder-item';
                         item.dataset.productName = product.product_name;
-                        item.innerHTML = `<div style="display:flex;align-items:center;gap:10px;width:100%;"><div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${product.product_name}</strong><div style='font-size:0.85em;color:#666;'>${product.product_code || ''}</div></div></div>`;
 
-                        item.addEventListener('click', () => {
-                            document.querySelectorAll('#productNamesList .powder-item').forEach(el => el.classList.remove('active'));
+                        item.innerHTML = `
+                            <div style="display:flex;align-items:center;gap:10px;width:100%;">
+                                <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${product.product_name}</strong><div style='font-size:0.85em;color:#666;'>${product.product_code || ''}</div></div>
+                                <div style="flex-shrink:0;margin-left:8px;"><input type="checkbox" class="spec-toggle-checkbox" id="prodToggle_${product.product_name}" aria-label="show-prod-${product.product_name}"></div>
+                            </div>
+                        `;
+
+                        item.addEventListener('click', (ev) => {
+                            if (ev.target && ev.target.classList && ev.target.classList.contains('spec-toggle-checkbox')) return;
+                            document.querySelectorAll('#productNamesList .powder-item').forEach(el => {
+                                el.classList.remove('active');
+                                const cb = el.querySelector('.spec-toggle-checkbox'); if (cb) cb.checked = false;
+                            });
                             item.classList.add('active');
+                            const cb = item.querySelector('.spec-toggle-checkbox'); if (cb) cb.checked = true;
                             showProductDetail(product.product_name);
                         });
 
                         namesDiv.appendChild(item);
+
+                        const checkbox = item.querySelector('.spec-toggle-checkbox');
+                        if (checkbox) {
+                            checkbox.addEventListener('change', (e) => {
+                                if (e.target.checked) {
+                                    document.querySelectorAll('#productNamesList .powder-item').forEach(el => {
+                                        el.classList.remove('active');
+                                        const cbx = el.querySelector('.spec-toggle-checkbox'); if (cbx && cbx !== e.target) cbx.checked = false;
+                                    });
+                                    item.classList.add('active');
+                                    showProductDetail(product.product_name);
+                                } else {
+                                    item.classList.remove('active');
+                                    const detailDiv = document.getElementById('recipeSpecDetail');
+                                    if (detailDiv) detailDiv.innerHTML = `<div class="empty-message">왼쪽에서 제품명을 선택하세요</div>`;
+                                }
+                            });
+                        }
                     });
 
                     // 자동 선택
                     const first = namesDiv.querySelector('.powder-item');
                     if (first) {
                         first.classList.add('active');
-                        showProductDetail(first.dataset.productname || first.dataset.productName);
+                        const cb = first.querySelector('.spec-toggle-checkbox'); if (cb) cb.checked = true;
+                        showProductDetail(first.dataset.productName);
                     }
                 } else {
                     namesDiv.innerHTML = `<div class="empty-message">${t('noProducts')}</div>`;
@@ -2209,6 +2239,18 @@ function updateLanguage() {
 
         function hideProductForm() {
             document.getElementById('productFormContainer').style.display = 'none';
+            // 우측 상세 영역 보이기(선택된 제품이 있으면 다시 로드)
+            const headerDiv = document.getElementById('recipeSpecHeader');
+            const detailDiv = document.getElementById('recipeSpecDetail');
+            if (headerDiv) headerDiv.style.display = '';
+            if (detailDiv) detailDiv.style.display = '';
+            // 재선택된 항목이 있으면 상세 다시 표시
+            const active = document.querySelector('#productNamesList .powder-item.active');
+            if (active && active.dataset && active.dataset.productName) {
+                showProductDetail(active.dataset.productName);
+            } else if (detailDiv) {
+                detailDiv.innerHTML = `<div class="empty-message">왼쪽에서 제품명을 선택하세요</div>`;
+            }
         }
 
         async function editProduct(productName) {
@@ -2255,7 +2297,11 @@ function updateLanguage() {
                     }
                 }
 
-                // 폼 표시
+                // 폼 표시: 우측 상세 영역을 폼으로 대체
+                const headerDiv = document.getElementById('recipeSpecHeader');
+                const detailDiv = document.getElementById('recipeSpecDetail');
+                if (headerDiv) headerDiv.style.display = 'none';
+                if (detailDiv) detailDiv.style.display = 'none';
                 document.getElementById('productFormContainer').style.display = 'block';
 
             } catch (error) {
