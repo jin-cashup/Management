@@ -115,6 +115,8 @@ function updateLanguage() {
         // ============================================
         function showAdminTab(tabName) {
             // 탭 버튼 active 상태 변경
+            // 관리자 하단에 열려 있는 분말 추가/수정 폼이 있으면 닫기
+            try { hidePowderForm(); } catch (e) { /* ignore if not available */ }
             document.querySelectorAll('.admin-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -132,6 +134,8 @@ function updateLanguage() {
 
         function showPowderManagement(mode) {
             // mode: 'incoming' or 'mixing'
+            // 탭 전환 시 분말 추가/수정 폼이 열려 있으면 자동으로 닫음
+            try { hidePowderForm(); } catch (e) { /* ignore if not available */ }
             powderSpecMode = mode;
 
             // 탭 버튼 처리 (active 토글)
